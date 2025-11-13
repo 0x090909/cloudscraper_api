@@ -30,6 +30,18 @@ class ScrapeRequest(BaseModel):
         default=None,
         description="Optional data to send with POST requests"
     )
+    impersonate: Optional[str] = Field(
+        default="chrome131",
+        description="Browser to impersonate for TLS/JA3 fingerprinting. Options: chrome, chrome99-136, safari, firefox, edge. Use latest versions for best Cloudflare bypass."
+    )
+    proxy: Optional[str] = Field(
+        default=None,
+        description="Proxy URL to use (e.g., 'http://proxy:port' or 'socks5://proxy:port'). Important for bypassing IP-based Cloudflare blocks."
+    )
+    default_headers: bool = Field(
+        default=True,
+        description="Whether to use curl_cffi's default browser headers. Recommended: True for Cloudflare bypass."
+    )
 
     @field_validator('url')
     @classmethod

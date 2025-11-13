@@ -4,11 +4,14 @@ A FastAPI-based HTTP service that provides web scraping capabilities using curl_
 
 ## Features
 
-- **Browser Impersonation**: Uses curl_cffi to mimic real browser TLS/JA3 and HTTP/2 fingerprints
-- **Anti-Bot Bypass**: Automatically bypasses fingerprint-based blocking (Cloudflare, Akamai, etc.)
+- **Cloudflare Bypass**: Explicit implementation of browser impersonation techniques to bypass Cloudflare protection
+- **TLS/JA3 Fingerprinting**: Uses curl_cffi to mimic real browser TLS handshakes (Chrome 99-136 supported)
+- **HTTP/2 Fingerprinting**: Replicates authentic browser HTTP/2 connection parameters
+- **Automatic Browser Headers**: Authentic headers (User-Agent, Sec-Ch-Ua, Accept) added automatically
+- **Proxy Support**: Built-in proxy support for IP rotation to bypass IP-based blocks
 - **FastAPI Framework**: High-performance async API with automatic documentation
 - **Request Validation**: Pydantic models for robust input/output validation
-- **Comprehensive Error Handling**: Detailed error messages and logging
+- **Comprehensive Error Handling**: Detailed error messages and Cloudflare detection logging
 - **Interactive Documentation**: Built-in Swagger UI and ReDoc
 
 ## Requirements
@@ -97,7 +100,10 @@ Scrapes a web page using curl_cffi with Chrome browser impersonation.
     "User-Agent": "Custom User Agent"
   },
   "timeout": 30,
-  "data": {}
+  "data": {},
+  "impersonate": "chrome131",
+  "proxy": "http://proxy:8080",
+  "default_headers": true
 }
 ```
 
@@ -107,6 +113,9 @@ Scrapes a web page using curl_cffi with Chrome browser impersonation.
 - `headers` (optional): Custom HTTP headers as key-value pairs
 - `timeout` (optional): Request timeout in seconds, 1-120 (default: 30)
 - `data` (optional): Data to send with POST requests
+- `impersonate` (optional): Browser to impersonate - chrome, chrome99-136, safari, firefox, edge (default: "chrome131")
+- `proxy` (optional): Proxy URL for IP rotation (format: http://host:port or socks5://host:port)
+- `default_headers` (optional): Use curl_cffi's authentic browser headers (default: true, recommended for Cloudflare)
 
 **Response:**
 ```json
@@ -201,6 +210,107 @@ fetch('http://localhost:8000/scrape', {
   console.log('Content:', data.content);
 })
 .catch(error => console.error('Error:', error));
+```
+
+## Cloudflare Bypass Techniques
+
+This API implements explicit Cloudflare bypass capabilities using curl_cffi's browser impersonation:
+
+### How It Works
+
+1. **TLS/JA3 Fingerprinting**: Mimics real Chrome browser TLS handshakes to avoid TLS fingerprint detection
+2. **HTTP/2 Fingerprinting**: Replicates Chrome's HTTP/2 connection parameters and frame ordering
+3. **Authentic Browser Headers**: curl_cffi automatically adds realistic browser headers (User-Agent, Accept, Sec-Ch-Ua, etc.)
+4. **Proxy Support**: Enables IP rotation to bypass IP-based blocks
+
+### Best Practices for Cloudflare Bypass
+
+**Use Latest Chrome Versions:**
+```bash
+curl -X POST "http://localhost:8000/scrape" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://cloudflare-protected-site.com",
+    "impersonate": "chrome131"
+  }'
+```
+
+**Enable Default Headers (Recommended):**
+```bash
+# Let curl_cffi handle headers automatically
+curl -X POST "http://localhost:8000/scrape" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://cloudflare-protected-site.com",
+    "impersonate": "chrome131",
+    "default_headers": true
+  }'
+```
+
+**Use Proxies for IP Rotation:**
+```bash
+# Important for bypassing IP-based blocks
+curl -X POST "http://localhost:8000/scrape" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://cloudflare-protected-site.com",
+    "impersonate": "chrome131",
+    "proxy": "http://proxy-server:8080"
+  }'
+```
+
+### Supported Browser Versions
+
+Available impersonate values:
+- **Chrome**: `chrome`, `chrome99`, `chrome100`, `chrome101`, `chrome104`, `chrome107`, `chrome110`, `chrome116`, `chrome119`, `chrome120`, `chrome123`, `chrome124`, `chrome131`, `chrome133a`, `chrome136`
+- **Safari**: `safari`, `safari153`, `safari155`, `safari170`, `safari180`, `safari184`, `safari260`
+- **Firefox**: `firefox133`, `firefox135`
+- **Edge**: `edge99`, `edge101`
+
+**Recommendation**: Use `chrome131` or higher for best results against modern Cloudflare protection.
+
+### Success Rates & Limitations
+
+**What curl_cffi Can Bypass:**
+- ✅ Basic TLS fingerprint detection
+- ✅ HTTP/2 fingerprint checks
+- ✅ User-Agent validation
+- ✅ Simple anti-bot systems
+
+**Cloudflare Protection Levels:**
+- **Basic Protection**: TLS fingerprinting alone is often sufficient
+- **Medium Protection**: Requires good proxy IPs + browser impersonation
+- **Advanced Protection**: May require additional techniques (JS challenges, CAPTCHAs)
+
+**Important Notes:**
+- Cloudflare uses multiple signals: TLS fingerprints, IP reputation, request rate, JavaScript challenges
+- Success depends on the target site's Cloudflare protection level
+- TLS fingerprinting is just one factor; combine with quality proxies for best results
+- Some advanced Cloudflare protections may still detect automation
+
+### Example: Complete Cloudflare Bypass Request
+
+```python
+import requests
+
+response = requests.post(
+    "http://localhost:8000/scrape",
+    json={
+        "url": "https://cloudflare-protected-site.com",
+        "method": "GET",
+        "impersonate": "chrome131",
+        "proxy": "http://premium-proxy:8080",
+        "default_headers": true,
+        "timeout": 60
+    }
+)
+
+result = response.json()
+if result['success']:
+    print(f"✓ Bypass successful! Status: {result['status_code']}")
+    print(f"Content length: {len(result['content'])} bytes")
+else:
+    print(f"✗ Failed: {result['error']}")
 ```
 
 ## Project Structure
