@@ -46,26 +46,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-@app.get("/", response_model=HealthResponse)
-async def root():
-    """Root endpoint returning API information."""
-    return HealthResponse(
-        status="healthy",
-        version=__version__
-    )
-
-
-@app.get("/health", response_model=HealthResponse)
-async def health_check():
-    """Health check endpoint."""
-    return HealthResponse(
-        status="healthy",
-        version=__version__
-    )
-
-
-@app.post("/scrape", response_model=ScrapeResponse, status_code=status.HTTP_200_OK)
+@app.post("/scrape", tags=["cloudscrape"],response_model=ScrapeResponse, status_code=status.HTTP_200_OK)
 async def scrape_url(request: ScrapeRequest):
     """
     Scrape a web page using cloudscraper.
