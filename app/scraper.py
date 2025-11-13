@@ -21,7 +21,7 @@ class ScraperService:
         """Get or create a cloudscraper instance."""
         if self.scraper is None:
             self.scraper = cloudscraper.create_scraper(
-                interpreter='js2py',  # Recommended for v3 challenges
+                interpreter='nodejs',  # Recommended for v3 challenges
                 delay=5,  # Allow more time for complex challenges
                 debug=True,  # Enable debug output to see v3 detection
                 browser={
