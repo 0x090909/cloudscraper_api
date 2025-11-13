@@ -1,5 +1,5 @@
 fastapi>=0.109.0
 uvicorn[standard]>=0.27.0
-git+https://github.com/lexiforest/curl_cffi.git
+curl_cffi==0.14.0b2
 pydantic>=2.5.0
 python-multipart>=0.0.6
