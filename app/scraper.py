@@ -21,14 +21,25 @@ class ScraperService:
         """Get or create a cloudscraper instance."""
         if self.scraper is None:
             self.scraper = cloudscraper.create_scraper(
-                interpreter='nodejs',  # Recommended for v3 challenges
-                delay=5,  # Allow more time for complex challenges
-                debug=True,  # Enable debug output to see v3 detection
-                browser={
-                    'browser': 'chrome',
-                    'platform': 'windows',
-                    'desktop': True
-                }
+                # Challenge handling
+                interpreter='js2py',  # Best compatibility for v3 challenges
+                delay=5,  # Extra time for complex challenges
+
+                # Stealth mode
+                enable_stealth=True,
+                stealth_options={
+                    'min_delay': 2.0,
+                    'max_delay': 6.0,
+                    'human_like_delays': True,
+                    'randomize_headers': True,
+                    'browser_quirks': True
+                },
+
+                # Browser emulation
+                browser='chrome',
+
+                # Debug mode
+                debug=True
             )
         return self.scraper
 
