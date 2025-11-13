@@ -1,9 +1,10 @@
-"""Cloudscraper service for handling web scraping requests."""
+"""curl_cffi service for handling web scraping requests with browser impersonation."""
 
 import logging
+import time
 from typing import Dict, Optional
-import cloudscraper
-from requests.exceptions import RequestException, Timeout, TooManyRedirects, HTTPError
+from curl_cffi.requests import AsyncSession, Response
+from curl_cffi import CurlError
 
 from app.models import ScrapeRequest, ScrapeResponse
 
@@ -11,25 +12,21 @@ logger = logging.getLogger(__name__)
 
 
 class ScraperService:
-    """Service class for handling web scraping with cloudscraper."""
+    """Service class for handling web scraping with curl_cffi."""
 
     def __init__(self):
         """Initialize the scraper service."""
-        self.scraper = None
+        self.session = None
 
-    def _get_scraper(self) -> cloudscraper.CloudScraper:
-        """Get or create a cloudscraper instance."""
-        if self.scraper is None:
-            self.scraper = cloudscraper.create_scraper(
-                interpreter='js2py',  # Recommended for v3 challenges
-                delay=5,              # Allow more time for complex challenges
-                debug=True            # Enable debug output to see v3 detection
-            )
-        return self.scraper
+    async def _get_session(self) -> AsyncSession:
+        """Get or create an AsyncSession instance."""
+        if self.session is None:
+            self.session = AsyncSession()
+        return self.session
 
     async def scrape_url(self, request: ScrapeRequest) -> ScrapeResponse:
         """
-        Scrape a URL using cloudscraper.
+        Scrape a URL using curl_cffi with browser impersonation.
 
         Args:
             request: ScrapeRequest object containing scraping parameters
@@ -37,14 +34,18 @@ class ScraperService:
         Returns:
             ScrapeResponse object with the scraping results
         """
-        scraper = self._get_scraper()
+        session = await self._get_session()
 
         try:
             logger.info(f"Scraping URL: {request.url} with method: {request.method}")
 
+            # Track request start time
+            start_time = time.time()
+
             # Prepare request parameters
             kwargs = {
                 'timeout': request.timeout,
+                'impersonate': 'chrome',  # Impersonate Chrome browser (bypasses fingerprinting)
             }
 
             if request.headers:
@@ -52,12 +53,15 @@ class ScraperService:
 
             # Execute the request based on method
             if request.method == "GET":
-                response = scraper.get(request.url, **kwargs)
+                response: Response = await session.get(request.url, **kwargs)
             else:  # POST
                 kwargs['data'] = request.data or {}
-                response = scraper.post(request.url, **kwargs)
+                response: Response = await session.post(request.url, **kwargs)
 
-            # Convert headers to dict (response.headers is a CaseInsensitiveDict)
+            # Calculate elapsed time
+            elapsed_seconds = time.time() - start_time
+
+            # Convert headers to dict
             response_headers = dict(response.headers)
 
             logger.info(f"Successfully scraped {request.url} - Status: {response.status_code}")
@@ -68,10 +72,10 @@ class ScraperService:
                 status_code=response.status_code,
                 content=response.text,
                 headers=response_headers,
-                elapsed_seconds=response.elapsed.total_seconds()
+                elapsed_seconds=elapsed_seconds
             )
 
-        except Timeout as e:
+        except TimeoutError as e:
             logger.error(f"Timeout error scraping {request.url}: {str(e)}")
             return ScrapeResponse(
                 success=False,
@@ -79,30 +83,28 @@ class ScraperService:
                 error=f"Request timed out after {request.timeout} seconds"
             )
 
-        except TooManyRedirects as e:
-            logger.error(f"Too many redirects for {request.url}: {str(e)}")
-            return ScrapeResponse(
-                success=False,
-                url=request.url,
-                error="Too many redirects"
-            )
-
-        except HTTPError as e:
-            logger.error(f"HTTP error scraping {request.url}: {str(e)}")
-            return ScrapeResponse(
-                success=False,
-                url=request.url,
-                status_code=e.response.status_code if e.response else None,
-                error=f"HTTP Error: {str(e)}"
-            )
-
-        except RequestException as e:
-            logger.error(f"Request error scraping {request.url}: {str(e)}")
-            return ScrapeResponse(
-                success=False,
-                url=request.url,
-                error=f"Request failed: {str(e)}"
-            )
+        except CurlError as e:
+            logger.error(f"Curl error scraping {request.url}: {str(e)}")
+            # Check for specific curl error codes
+            error_msg = str(e)
+            if "timed out" in error_msg.lower():
+                return ScrapeResponse(
+                    success=False,
+                    url=request.url,
+                    error=f"Request timed out: {error_msg}"
+                )
+            elif "redirect" in error_msg.lower():
+                return ScrapeResponse(
+                    success=False,
+                    url=request.url,
+                    error=f"Too many redirects: {error_msg}"
+                )
+            else:
+                return ScrapeResponse(
+                    success=False,
+                    url=request.url,
+                    error=f"Request failed: {error_msg}"
+                )
 
         except Exception as e:
             logger.error(f"Unexpected error scraping {request.url}: {str(e)}", exc_info=True)
@@ -111,6 +113,12 @@ class ScraperService:
                 url=request.url,
                 error=f"Unexpected error: {str(e)}"
             )
+
+    async def close(self):
+        """Close the session and cleanup resources."""
+        if self.session:
+            await self.session.close()
+            self.session = None
 
 
 # Global instance

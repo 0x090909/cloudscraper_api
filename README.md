@@ -1,10 +1,11 @@
-# Cloudscraper API
+# curl_cffi Scraper API
 
-A FastAPI-based HTTP service that provides web scraping capabilities using cloudscraper to automatically bypass Cloudflare protection.
+A FastAPI-based HTTP service that provides web scraping capabilities using curl_cffi to impersonate browser fingerprints and bypass anti-bot protection.
 
 ## Features
 
-- **Cloudflare Bypass**: Automatically handles Cloudflare's anti-bot protection
+- **Browser Impersonation**: Uses curl_cffi to mimic real browser TLS/JA3 and HTTP/2 fingerprints
+- **Anti-Bot Bypass**: Automatically bypasses fingerprint-based blocking (Cloudflare, Akamai, etc.)
 - **FastAPI Framework**: High-performance async API with automatic documentation
 - **Request Validation**: Pydantic models for robust input/output validation
 - **Comprehensive Error Handling**: Detailed error messages and logging
@@ -12,7 +13,7 @@ A FastAPI-based HTTP service that provides web scraping capabilities using cloud
 
 ## Requirements
 
-- Python 3.8+
+- Python 3.9+
 - See `requirements.txt` for package dependencies
 
 ## Installation
@@ -85,7 +86,7 @@ Returns the health status of the API.
 
 **POST** `/scrape`
 
-Scrapes a web page using cloudscraper.
+Scrapes a web page using curl_cffi with Chrome browser impersonation.
 
 **Request Body:**
 ```json
@@ -210,7 +211,7 @@ cloudscraper_api/
 │   ├── __init__.py          # Package initialization
 │   ├── main.py              # FastAPI application and endpoints
 │   ├── models.py            # Pydantic models for validation
-│   └── scraper.py           # Cloudscraper service logic
+│   └── scraper.py           # curl_cffi scraper service logic
 ├── requirements.txt         # Python dependencies
 ├── .gitignore              # Git ignore rules
 └── README.md               # This file
@@ -218,14 +219,16 @@ cloudscraper_api/
 
 ## Important Notes
 
-- **Cloudflare Delays**: Initial requests to Cloudflare-protected sites may take ~5 seconds while the challenge is solved
+- **Browser Impersonation**: curl_cffi impersonates Chrome browser fingerprints to bypass anti-bot protection
+- **Performance**: curl_cffi is significantly faster than traditional libraries like requests or httpx
+- **Protocol Support**: Supports HTTP/2 and HTTP/3 (available since curl_cffi v0.11.4)
 - **Rate Limiting**: Consider implementing rate limiting for production use to prevent abuse
 - **Security**: The API currently allows scraping any URL. For production, consider:
   - Adding authentication (API keys, OAuth, etc.)
   - Implementing URL allowlists/blocklists
   - Adding rate limiting per user/IP
   - Validating URLs to prevent SSRF attacks
-- **Cloudscraper Status**: As of 2025, cloudscraper is no longer actively maintained but remains functional
+- **Active Maintenance**: curl_cffi is actively maintained with regular updates and new features
 
 ## Error Handling
 

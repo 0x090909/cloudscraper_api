@@ -1,4 +1,4 @@
-"""FastAPI application for web scraping with cloudscraper."""
+"""FastAPI application for web scraping with curl_cffi browser impersonation."""
 
 import logging
 from contextlib import asynccontextmanager
@@ -22,15 +22,17 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context manager for startup and shutdown events."""
-    logger.info("Starting Cloudscraper API service...")
+    logger.info("Starting curl_cffi Scraper API service...")
     yield
-    logger.info("Shutting down Cloudscraper API service...")
+    logger.info("Shutting down curl_cffi Scraper API service...")
+    # Cleanup scraper session
+    await scraper_service.close()
 
 
 # Initialize FastAPI application
 app = FastAPI(
-    title="Cloudscraper API",
-    description="HTTP API for web scraping using cloudscraper to bypass Cloudflare protection",
+    title="curl_cffi Scraper API",
+    description="HTTP API for web scraping using curl_cffi with browser impersonation to bypass anti-bot protection",
     version=__version__,
     lifespan=lifespan,
     docs_url="/docs",
@@ -46,13 +48,32 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.post("/scrape", tags=["cloudscrape"],response_model=ScrapeResponse, status_code=status.HTTP_200_OK)
+
+@app.get("/", response_model=HealthResponse)
+async def root():
+    """Root endpoint returning API information."""
+    return HealthResponse(
+        status="healthy",
+        version=__version__
+    )
+
+
+@app.get("/health", response_model=HealthResponse)
+async def health_check():
+    """Health check endpoint."""
+    return HealthResponse(
+        status="healthy",
+        version=__version__
+    )
+
+
+@app.post("/scrape", tags=["scraper"], response_model=ScrapeResponse, status_code=status.HTTP_200_OK)
 async def scrape_url(request: ScrapeRequest):
     """
-    Scrape a web page using cloudscraper.
+    Scrape a web page using curl_cffi with browser impersonation.
 
-    This endpoint accepts a URL and optional parameters, then uses cloudscraper
-    to fetch the page content, automatically bypassing Cloudflare protection if present.
+    This endpoint accepts a URL and optional parameters, then uses curl_cffi
+    to fetch the page content with Chrome browser fingerprinting, bypassing anti-bot protection.
 
     Args:
         request: ScrapeRequest containing the URL and optional parameters
